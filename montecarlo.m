@@ -31,10 +31,10 @@ function risi(stTock, r)
     scatter(x(Zunaj), y(Zunaj), 50, 'b', 'x');
     kroznica(r);
     axis equal;
-    title('Naključno generirane točke na krožnici z lokom');
-    xlabel('X-os');
-    ylabel('Y-os');
-    legend('Znotraj krožnice', 'Zunaj krožnice', 'Krožnica');
+    title('Naključno generirane točke v polju krožnice');
+    xlabel('os ki sliši na ime X');
+    ylabel('os ki sliši na ime Y');
+    legend('Notranjost krožnice', 'Zunnjost krožnice', 'Krožnica');
 end
 
 function kroznica(r)
