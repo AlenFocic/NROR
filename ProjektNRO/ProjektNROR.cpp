@@ -27,9 +27,9 @@ vector<int> Iskanje_v_mreži(vector<vector<int>> vektor2D, int ID) {
     return yx;
 }
 
-
 int main() {
 
+    //- Branje datoteke
     int Št_točk, Št_celic, Št_pogojev, Št_pogN;
     string bes;
     char c;
@@ -39,6 +39,8 @@ int main() {
     vector<int> Seznam_ID_točk;
     double x, y;
     vector<double> Seznam_x, Seznam_y;
+    vector<double> xy{ 0,0 };
+    vector<vector<double>> Seznam_xy;
     vector<vector<int>> mreža;
 
     const double dx = 1.25;
@@ -60,7 +62,7 @@ int main() {
 
     //- BRANJE DATOTEKE
     ifstream file;
-    file.open("primer4mreza.txt", ios::in);
+    file.open("primer2mreza.txt", ios::in);
 
     if (file.is_open()) {
 
@@ -76,6 +78,10 @@ int main() {
             Seznam_ID_točk.push_back(ID_točk);
             Seznam_x.push_back(x);
             Seznam_y.push_back(y);
+
+            xy[0] = x;
+            xy[1] = y;
+            Seznam_xy.push_back(xy);
             //cout << Seznam_ID_točk[i] << "  " << Seznam_x[i] << "  " << Seznam_y[i] << "\n";
         }
 
@@ -111,7 +117,7 @@ int main() {
                 rob_pog_kr.push_back('t');
 
                 file >> Št_pogN;
-                
+
                 for (int i = 0; i < Št_pogN; i++) {
                     file >> pogojN;
                     Seznam_pogojN.push_back(pogojN);
@@ -166,7 +172,7 @@ int main() {
         //- ZAPIS MREŽE
         int točke_x = round((*max_element(Seznam_x.begin(), Seznam_x.end()) - *min_element(Seznam_x.begin(), Seznam_x.end())) / dx) + 1;
         int točke_y = round((*max_element(Seznam_y.begin(), Seznam_y.end()) - *min_element(Seznam_y.begin(), Seznam_y.end())) / dx) + 1;
-        mreža.assign(točke_y + 2, vector<int>(točke_x + 2, -1 /*0*/));
+        mreža.assign(točke_y + 2, vector<int>(točke_x + 2, -1/*0*/));
 
         for (int i = 0; i < Št_točk; i++) { // y vrednosti so zrcaljene
             mreža[round((Seznam_y[i] - *min_element(Seznam_y.begin(), Seznam_y.end())) / dx) + 1][round((Seznam_x[i] - *min_element(Seznam_x.begin(), Seznam_x.end())) / dx) + 1] = Seznam_ID_točk[i] /*1*/;
@@ -411,16 +417,38 @@ int main() {
 
         
         //- IZRAČUN SISTEMA ENAČB
-        vector<double> T(Št_točk, 150);
+        vector<double> T(Št_točk, 100);
         double d;
-        int Št_iteracij = 1200;
+        int Št_iteracij = 600;
 
+        /*auto čas0 = chrono::high_resolution_clock::now();
+
+        for (int x = 0; x < Št_iteracij; x++) {
+
+            for (int j = 0; j < Št_točk; j++) {
+                d = b[j];
+
+                for (int i = 0; i < Št_točk; i++) {
+
+                    if (j != i) {
+                        d = d - M[j][i] * T[i];
+                    }
+                }
+                T[j] = d / M[j][j];
+            }
+            //cout << T[1670] << endl; // Zrcaljeno čez x os
+        }
+        
+        auto čas1 = chrono::high_resolution_clock::now();
+        chrono::duration<double> čas_razlika01 = čas1 - čas0;
+        cout << "Cas singular//: " << čas_razlika01.count() << " s" << endl;*/
+
+
+        T.assign(Št_točk, 100);
         auto čas2 = chrono::high_resolution_clock::now();
 
-        //- Paralelni izračun
         for (int i = 0; i < Št_iteracij; i++) {
 
-#pragma omp parallel for
             for (int i = 0; i < Št_točk; i++) {
 
                 double sum = 0;
@@ -431,12 +459,24 @@ int main() {
                 }
                 T[i] = (b[i] - sum) / M[i][i];
             }
-            //cout << T[1670] << endl;
+            cout << T[1670] << endl;
         }
 
         auto čas3 = chrono::high_resolution_clock::now();
         chrono::duration<double> čas_razlika23 = čas3 - čas2;
         cout << "Cas parallel/*: " << čas_razlika23.count() << " s" << endl;
+
+
+        /*for (int i = 0; i < 100; i++) {
+            for (int j = 0; j < 100; j++) {
+                cout << M[i][j] << " ";
+            }
+            cout << endl;
+        }/*
+        for (int i = 0; i < Št_točk; i++) {
+            cout << i << " - " << b[i] << endl;
+        }*/
+
 
         auto čas4 = chrono::high_resolution_clock::now();/////////
         //- IZPIS MATRIK
@@ -450,6 +490,7 @@ int main() {
                 for (int j = 0; j < size(M[i]); j++) {
                     newFile << M[i][j] << " ";
                 }
+                newFile << endl;
             }
             newFile << endl;
             newFile << size(b) << endl;
@@ -477,9 +518,47 @@ int main() {
         auto čas5 = chrono::high_resolution_clock::now();////////
         chrono::duration<double> čas_razlika45 = čas5 - čas4;/////////////
         cout << "Cas pisanja datoteke: " << čas_razlika45.count() << " s" << endl;///////////
+
+        //- .VTK ZAPIS
+        std::ofstream VTK("Prikaz.vtk");
+
+        VTK << "# vtk DataFile Version 3.0" << endl;
+        VTK << "Prikaz" << endl;
+        VTK << "ASCII" << endl;
+        VTK << "DATASET UNSTRUCTURED_GRID" << endl;
+
+        VTK << "POINTS " << Št_točk << " float" << endl;
+        for (int i = 0; i < Št_točk; i++) {
+            VTK << Seznam_x[i] << " " << Seznam_y[i] << " 0" << endl;
+        }
+        VTK << endl;
+
+        VTK << "CELLS " << Št_celic << " " << Št_celic * 5 << endl;
+        for (int i = 0; i < Št_celic; i++) {
+            VTK << 4 << " " << Seznam_t1[i] << " " << Seznam_t2[i] << " " << Seznam_t3[i] << " " << Seznam_t4[i] << endl;
+        }
+        VTK << endl;
+
+        VTK << "CELL_TYPES " << Št_celic << endl;
+        for (int i = 0; i < Št_celic; i++) {
+            VTK << 9 << endl;
+        }
+        VTK << endl;
+
+        VTK << "POINT_DATA " << Št_točk << endl;
+        VTK << "SCALARS Temperatura  float 1" << endl;
+        VTK << "LOOKUP_TABLE default" << endl;
+
+        for (int i = 0; i < Št_točk; i++) {
+            VTK << T[i] << endl;
+        }
+
+        VTK.close();
     }
+    
     //- Datoteka ni odprta
     else cout << "Datoteka ni najdena";
 
     return 0;
 }
+
